@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        /* Menu de início centralizado e estilizado */
+        #menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100%; /* Ocupa 100% da altura da tela */
+            background-color: #3e8e41;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 400px;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        #menu:hover {
+            transform: scale(1.05);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            background-color: #388e3c;
+            transform: scale(0.98);
+        }
+
+        /* Jogo da memória escondido inicialmente */
+        .memory-game {
+            display: none;
+            width: 360px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .memory-card {
+            width: 70px;
+            height: 70px;
+            margin: 5px;
+            position: relative;
+            cursor: pointer;
+            transform: scale(1);
+            transition: transform 0.5s;
+            background-color: #333;
+            border-radius: 8px;
+        }
+
+        .memory-card img {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+
+        .memory-card.flipped img {
+            display: block;
+        }
+
+        .error-counter {
+            font-size: 18px;
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <h1>Jogo da Memória</h1>
+        <button id="startButton">Começar</button>
+    </div>
+
+    <div class="memory-game"></div>
+
+    <script>
+        const gameContainer = document.querySelector('.memory-game');
+        const errorCounter = document.createElement('div');
+        errorCounter.classList.add('error-counter');
+        gameContainer.appendChild(errorCounter);
+
+        let phase = 1;
+        let numPairs = 3;
+        let maxErrors = 5;
+        let currentErrors = 0;
+        let hasFlippedCard = false;
+        let lockBoard = false;
+        let firstCard, secondCard;
+        let matchedPairs = 0;
+
+        // Função para iniciar o jogo
+        function startGame() {
+            // Exibe o jogo e esconde o menu
+            document.getElementById('menu').style.display = 'none';
+            gameContainer.style.display = 'flex';
+            loadPhase(); // Carrega a primeira fase
+        }
+
+        // Função para carregar a fase do jogo
+        function loadPhase() {
+            gameContainer.innerHTML = '';  // Limpa o conteúdo do jogo
+            matchedPairs = 0;
+            currentErrors = 0;
+            errorCounter.textContent = `Erros: ${currentErrors} de ${maxErrors}`;
+
+            // Cria os pares de cartas para esta fase
+            const cardPairs = createCards(numPairs);
+            shuffle(cardPairs);
+
+            cardPairs.forEach(cardHTML => {
+                gameContainer.appendChild(cardHTML);
+            });
+
+            gameContainer.querySelectorAll('.memory-card').forEach(card => card.addEventListener('click', flipCard));
+        }
+
+        // Função para criar os pares de cartas
+        function createCards(numPairs) {
+            const images = [
+                "https://i.pinimg.com/564x/b4/8c/64/b48c64b951320d9f12ce7dc770492ecf.jpg", // Imagem A
+                "https://i.pinimg.com/564x/1f/eb/87/1feb87c4771bb53145baf6a42d2f7c52.jpg", // Imagem B
+                "https://i.pinimg.com/564x/a4/cf/89/a4cf89ccd283b9fdbb20669c79a96e95.jpg", // Imagem C
+                "https://i.pinimg.com/564x/d3/28/b9/d328b987cc2ed9f7c64dc82284a837da.jpg", // Imagem D
+                "https://i.pinimg.com/564x/e3/71/e5/e371e574ed4cbc72d290c8f8f4fe163f.jpg", // Imagem E
+                "https://i.pinimg.com/564x/2a/8b/09/2a8b0978aa6b3c2df7bfe67a75cdda55.jpg", // Imagem F
+                "https://i.pinimg.com/564x/b1/49/77/b149772b4e76915c907ee35ba01455f2.jpg", // Imagem G
+                "https://i.pinimg.com/564x/96/4f/04/964f0458fe8a3d51b4c03ee7f24a76ea.jpg", // Imagem H
+                "https://i.pinimg.com/564x/24/c9/a1/24c9a1ebf5f3a88d273edf2e28c8e881.jpg", // Imagem I
+                "https://i.pinimg.com/564x/41/92/32/419232504dba4744b6908e890f27c0e7.jpg"  // Imagem J
+            ];
+
+            const selectedImages = images.slice(0, numPairs);
+
+            const cardPairs = [];
+            selectedImages.forEach((imgSrc, index) => {
+                const card1 = createCardElement(imgSrc, `img${index}`);
+                const card2 = createCardElement(imgSrc, `img${index}`);
+                cardPairs.push(card1, card2);
+            });
+
+            return cardPairs;
+        }
+
+        // Função para criar o elemento de cada carta
+        function createCardElement(imgSrc, name) {
+            const card = document.createElement('div');
+            card.classList.add('memory-card');
+            card.dataset.name = name;
+
+            const frontFace = document.createElement('img');
+            frontFace.classList.add('front-face');
+            frontFace.src = imgSrc;
+            frontFace.alt = `Imagem ${name}`;
+
+            card.appendChild(frontFace);
+            return card;
+        }
+
+        // Função para virar a carta
+        function flipCard() {
+            if (lockBoard) return;
+            if (this === firstCard) return;
+
+            this.classList.add('flipped');
+
+            if (!hasFlippedCard) {
+                hasFlippedCard = true;
+                firstCard = this;
+                return;
+            }
+
+            secondCard = this;
+            checkForMatch();
+        }
+
+        // Função para verificar se as cartas combinam
+        function checkForMatch() {
+            let isMatch = firstCard.dataset.name === secondCard.dataset.name;
+            isMatch ? disableCards() : unflipCards();
+
+            if (isMatch) {
+                matchedPairs++;
+                if (matchedPairs === numPairs) {
+                    setTimeout(nextPhase, 1000);
+                }
+            } else {
+                currentErrors++;
+                errorCounter.textContent = `Erros: ${currentErrors} de ${maxErrors}`;
+                if (currentErrors >= maxErrors) {
+                    setTimeout(resetGame, 500); // Volta para o menu automaticamente após perder
+                }
+            }
+        }
+
+        // Função para desabilitar as cartas combinadas
+        function disableCards() {
+            firstCard.removeEventListener('click', flipCard);
+            secondCard.removeEventListener('click', flipCard);
+            resetBoard();
+        }
+
+        // Função para voltar as cartas ao estado inicial
+        function unflipCards() {
+            lockBoard = true;
+            setTimeout(() => {
+                firstCard.classList.remove('flipped');
+                secondCard.classList.remove('flipped');
+                resetBoard();
+            }, 1000);
+        }
+
+        // Função para resetar as variáveis de controle
+        function resetBoard() {
+            [hasFlippedCard, lockBoard] = [false, false];
+            [firstCard, secondCard] = [null, null];
+        }
+
+        // Função para ir para a próxima fase
+        function nextPhase() {
+            phase++;
+            numPairs = phase + 2; // Aumenta o número de pares a cada fase
+            maxErrors = phase + 4; // Aumenta os erros disponíveis por fase
+            loadPhase();
+        }
+
+        // Função para resetar o jogo e voltar ao menu
+        function resetGame() {
+            alert('Game Over! Você perdeu.');
+            document.getElementById('menu').style.display = 'block';
+            gameContainer.style.display = 'none';
+        }
+
+        // Função para embaralhar as cartas
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Troca os elementos
+            }
+        }
+
+        // Adiciona o evento de clique no botão de início
+        document.getElementById('startButton').addEventListener('click', startGame);
+    </script>
+</body>
+</html>
